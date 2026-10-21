@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Deroflux — limpador de metadados</title>
+  <meta name="description" content="Remova localização, modelo do aparelho e datas dos seus vídeos. Tudo acontece no seu navegador: o vídeo não é enviado para nenhum servidor.">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="cleaner.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="lp-page">
+    <header class="lp-topbar">
+      <a class="lp-brand" href="./"><img src="mark.svg" alt="" width="32" height="32"><span>DERO<strong>FLUX</strong></span></a>
+      <div class="confidentiality"><span class="status-dot"></span> <span><strong>nada é enviado</strong></span></div>
+    </header>
+
+    <main class="lp-main">
+      <section class="lp-hero">
+        <div class="eyebrow">limpador <span class="header-slash">/</span> metadados de vídeo</div>
+        <h1>Limpe seus<br><em>vídeos.</em></h1>
+        <p class="lead">Remove localização (GPS), modelo do aparelho, datas, título, autor e faixas escondidas de localização e sensores. A imagem e o som não são recodificados: o vídeo sai com a mesma qualidade do original.</p>
+        <div class="lp-privacy"><span class="status-dot"></span><span><strong>Seu vídeo não sai do seu aparelho.</strong> A limpeza acontece aqui mesmo, no seu navegador. Nenhum arquivo é enviado para servidor algum.</span></div>
+        <div class="lp-limits"><span>MP4 · MOV · M4V · 3GP</span><span>vários de uma vez</span><span>sem limite de tamanho</span></div>
+      </section>
+
+      <div class="notice notice-error" id="notice" role="alert" hidden><span id="notice-text"></span><button class="notice-close" type="button" id="notice-close" aria-label="Fechar aviso">×</button></div>
+
+      <section class="work-area">
+        <div class="upload-column">
+          <div class="section-heading"><div><div class="panel-kicker">01 / vídeos</div><h2>Escolha os vídeos</h2></div></div>
+          <div class="upload-zone" id="drop" role="button" tabindex="0" aria-label="Escolher vídeos">
+            <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/3gpp,.mp4,.mov,.m4v,.3gp,.3g2" multiple hidden>
+            <div class="upload-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><path d="M12 16V4m-4 4 4-4 4 4M5 20h14"/></svg></div>
+            <div><strong>Arraste os vídeos para cá</strong><span>ou <button type="button" class="inline-button" id="pick">escolha os arquivos</button></span></div>
+            <small>MP4, MOV, M4V ou 3GP (os formatos dos celulares)</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="queue-section">
+        <div class="section-heading">
+          <div><div class="panel-kicker">02 / resultados</div><h2>Vídeos limpos</h2></div>
+          <div class="queue-actions"><button class="text-button" type="button" id="clear" hidden>Limpar a lista</button></div>
+        </div>
+        <div id="jobs"></div>
+      </section>
+    </main>
+
+    <footer class="lp-footer">
+      <p>Os vídeos ficam só na memória deste navegador e somem ao fechar a página. Remover metadados não garante anonimato: a imagem e o som ainda podem identificar pessoas e lugares. Esta versão não recodifica o vídeo nem altera dados gravados dentro da própria imagem.</p>
+    </footer>
+  </div>
+</body>
+</html>
