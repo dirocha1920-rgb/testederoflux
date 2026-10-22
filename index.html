@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self' https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <title>Deroflux — ferramentas</title>
-  <meta name="description" content="Ferramentas de vídeo e imagem que rodam no seu navegador: limpar metadados, sobreposição em feed e story, filtro de vídeo e melhorar imagem.">
+  <meta name="description" content="Ferramentas de vídeo e imagem que rodam no seu navegador: baixar vídeos do Instagram e TikTok, ajustar o áudio para o Kwai, limpar metadados, sobreposição em feed e story, filtro de vídeo e melhorar imagem.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <script src="config.js" defer></script>
   <script src="core.js" defer></script>
   <script src="cleaner.js" defer></script>
   <script src="image-cleaner.js" defer></script>
@@ -17,6 +18,9 @@
   <script src="tool-limpar-video.js" defer></script>
   <script src="tool-sobrepor-video.js" defer></script>
   <script src="tool-palco.js" defer></script>
+  <script src="tool-baixar-video.js" defer></script>
+  <script src="audio-fix.js" defer></script>
+  <script src="tool-ajustar-audio.js" defer></script>
   <script src="tool-limpar-imagem.js" defer></script>
   <script src="tool-melhorar-imagem.js" defer></script>
   <script src="tool-sobrepor-imagem.js" defer></script>

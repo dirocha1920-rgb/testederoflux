@@ -39,6 +39,7 @@
     stage: 'M3 5h18v11H3zM8 20h8M12 16v4',
     play: 'M7 5v14l12-7z',
     pause: 'M7 5h4v14H7zM13 5h4v14h-4z',
+    audio: 'M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2',
   };
 
   function svg(name) {

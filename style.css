@@ -537,3 +537,8 @@ h2 { margin-top: .48rem; color: var(--white); font-size: 1.2rem; letter-spacing:
   .queue-section .section-heading { flex-wrap: wrap; align-items: center; }
   .queue-actions { flex-wrap: wrap; }
 }
+
+/* Ajustar áudio */
+.audio-options { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem 1.6rem; margin: 1rem 0 1.6rem; }
+.audio-options .palco-check { min-height: 2.5rem; }
+.audio-options .palco-group { min-width: 220px; }
