@@ -40,6 +40,7 @@
     play: 'M7 5v14l12-7z',
     pause: 'M7 5h4v14H7zM13 5h4v14h-4z',
     audio: 'M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2',
+    film: 'M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4',
   };
 
   function svg(name) {
@@ -473,6 +474,7 @@
     'palco-filtro': 'Tela verde, preta ou de qualquer cor por cima do vídeo.',
     'baixar-video': 'Baixe Reels e TikToks na maior qualidade, sem marca d\'água.',
     'ajustar-audio': 'Corrige em massa o erro de bitrate de áudio do Kwai.',
+    'imagem-video': 'Transforma fotos em vídeos de 5 a 30 segundos, em feed ou story.',
     'limpar-imagem': 'Tira GPS, câmera e datas das fotos, sem mexer nos pixels.',
     'melhorar-imagem': 'Amplia 2×, 3× ou 4× com mais nitidez.',
     'sobrepor-imagem': 'Coloque uma imagem por cima da foto, em feed ou story.',
