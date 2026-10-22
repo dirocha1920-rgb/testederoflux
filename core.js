@@ -466,6 +466,80 @@
     window.scrollTo(0, 0);
   }
 
+  // ------------------------------------------------------------ página inicial
+  var DESC = {
+    'limpar-video': 'Remove localização, aparelho e datas do vídeo sem perder qualidade.',
+    'sobrepor-video': 'Coloque uma imagem por cima do vídeo, em feed ou story.',
+    'palco-filtro': 'Tela verde, preta ou de qualquer cor por cima do vídeo.',
+    'baixar-video': 'Baixe Reels e TikToks na maior qualidade, sem marca d\'água.',
+    'ajustar-audio': 'Corrige em massa o erro de bitrate de áudio do Kwai.',
+    'limpar-imagem': 'Tira GPS, câmera e datas das fotos, sem mexer nos pixels.',
+    'melhorar-imagem': 'Amplia 2×, 3× ou 4× com mais nitidez.',
+    'sobrepor-imagem': 'Coloque uma imagem por cima da foto, em feed ou story.',
+  };
+  var home = null;
+  function buildHome() {
+    var enter = h('button', { type: 'button', class: 'home-enter' }, h('span', { text: 'Acessar ferramentas' }), svg('M5 12h14m-6-6 6 6-6 6'));
+    var grid = h('div', { class: 'home-grid', role: 'list' });
+    var groups = [];
+    tools.forEach(function (tool) {
+      var g = groups.find(function (x) { return x.name === tool.group; });
+      if (!g) { g = { name: tool.group, items: [] }; groups.push(g); }
+      g.items.push(tool);
+    });
+    var n = 0;
+    groups.forEach(function (g) {
+      grid.appendChild(h('div', { class: 'home-group', text: g.name }));
+      g.items.forEach(function (tool) {
+        var card = h('a', { class: 'home-card', href: '#' + tool.id, role: 'listitem' },
+          h('span', { class: 'home-card-index mono', text: ('0' + (++n)).slice(-2) }),
+          h('span', { class: 'home-card-icon' }, svg(tool.icon)),
+          h('strong', { text: tool.label }),
+          h('span', { class: 'home-card-desc', text: DESC[tool.id] || '' }),
+          h('span', { class: 'home-card-go', 'aria-hidden': 'true' }, svg('M5 12h14m-6-6 6 6-6 6')));
+        card.style.animationDelay = (0.05 * n) + 's';
+        card.addEventListener('click', function (e) {
+          e.preventDefault();
+          card.classList.add('home-card-picked');
+          home.classList.add('home-leaving');
+          setTimeout(function () { location.hash = tool.id; }, 380);
+        });
+        grid.appendChild(card);
+      });
+    });
+    var el = h('div', { class: 'home', hidden: true },
+      h('div', { class: 'home-bg', 'aria-hidden': 'true' }, h('div', { class: 'home-floor' }), h('div', { class: 'home-glow' }), h('div', { class: 'home-scan' })),
+      h('header', { class: 'home-top' },
+        h('span', { class: 'brand' }, h('img', { src: 'mark.svg', alt: '', width: '30', height: '30' }), h('span', null, 'DERO', h('strong', { text: 'FLUX' }))),
+        h('span', { class: 'home-status mono' }, h('span', { class: 'home-status-dot' }), 'sistema online · ' + tools.length + ' ferramentas')),
+      h('main', { class: 'home-main' },
+        h('section', { class: 'home-hero' },
+          h('p', { class: 'home-kicker mono', text: '// vídeo · imagem · criativos' }),
+          h('h1', { class: 'home-title' }, h('span', { class: 'home-title-line', text: 'SEJA BEM VINDO(A)' }), h('span', { class: 'home-title-line home-title-strong', text: 'AO DEROFLUX' })),
+          h('p', { class: 'home-sub', text: 'Ferramentas rápidas para preparar seus vídeos e imagens. Quase tudo roda no seu navegador.' }),
+          enter),
+        h('section', { class: 'home-tools', 'aria-label': 'Escolha uma ferramenta' },
+          h('div', { class: 'home-tools-head' },
+            h('p', { class: 'home-kicker mono', text: '// escolha uma ferramenta' }),
+            h('button', { type: 'button', class: 'text-button home-back', text: '← voltar ao início', onclick: function () { location.hash = 'inicio'; } })),
+          grid)));
+    enter.addEventListener('click', function () { location.hash = 'ferramentas'; });
+    document.body.insertBefore(el, document.body.firstChild);
+    return el;
+  }
+  function showHome(withTools) {
+    if (!home) home = buildHome();
+    document.querySelector('.tools-shell').hidden = true;
+    home.hidden = false;
+    home.classList.remove('home-leaving');
+    Array.prototype.forEach.call(home.querySelectorAll('.home-card-picked'), function (c) { c.classList.remove('home-card-picked'); });
+    home.classList.toggle('home-open', !!withTools);
+    document.title = withTools ? 'Ferramentas — Deroflux' : 'Deroflux';
+    window.scrollTo(0, 0);
+    var focus = home.querySelector(withTools ? '.home-card' : '.home-enter');
+    if (focus && withTools) setTimeout(function () { focus.focus({ preventScroll: true }); }, 300);
+  }
+
   function start() {
     var nav = document.getElementById('tool-nav');
     var group = null;
@@ -473,7 +547,14 @@
       if (tool.group !== group) { group = tool.group; nav.appendChild(h('div', { class: 'tool-nav-group', text: group })); }
       nav.appendChild(h('a', { class: 'tool-link', href: '#' + tool.id, 'data-tool-link': tool.id }, svg(tool.icon), h('span', { class: 'tool-link-label', text: tool.label })));
     });
-    var route = function () { show((location.hash || '').slice(1)); };
+    var route = function () {
+      var id = (location.hash || '').slice(1);
+      if (!id || id === 'inicio') return showHome(false);
+      if (id === 'ferramentas') return showHome(true);
+      if (home) home.hidden = true;
+      document.querySelector('.tools-shell').hidden = false;
+      show(id);
+    };
     window.addEventListener('hashchange', route);
     route();
     // Pergunta antes de fechar se algum trabalho se perderia

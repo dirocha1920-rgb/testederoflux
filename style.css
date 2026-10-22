@@ -542,3 +542,71 @@ h2 { margin-top: .48rem; color: var(--white); font-size: 1.2rem; letter-spacing:
 .audio-options { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem 1.6rem; margin: 1rem 0 1.6rem; }
 .audio-options .palco-check { min-height: 2.5rem; }
 .audio-options .palco-group { min-width: 220px; }
+
+/* ---------------------------------------------------------------- página inicial */
+.tools-shell[hidden] { display: none; }
+.home { position: relative; min-height: 100vh; overflow: hidden; background: var(--black); color: var(--text); isolation: isolate; }
+.home-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.home-floor { position: absolute; left: -50%; right: -50%; bottom: -5%; height: 120%; transform: perspective(420px) rotateX(64deg); transform-origin: 50% 100%;
+  background-image: linear-gradient(rgba(245,245,245,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(245,245,245,.2) 1px, transparent 1px);
+  background-size: 64px 64px; animation: home-floor 6s linear infinite;
+  -webkit-mask-image: linear-gradient(to top, #000 25%, transparent 90%); mask-image: linear-gradient(to top, #000 25%, transparent 90%); }
+@keyframes home-floor { to { background-position: 0 64px, 0 0; } }
+.home-glow { position: absolute; left: 50%; top: 38%; width: min(900px, 120vw); height: 520px; transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, rgba(245,245,245,.13), rgba(245,245,245,.04) 55%, transparent); filter: blur(10px); animation: home-breathe 7s ease-in-out infinite; }
+@keyframes home-breathe { 50% { opacity: .55; transform: translate(-50%, -50%) scale(1.06); } }
+.home-scan { position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); }
+.home-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.6rem clamp(1rem, 4vw, 3.5rem); }
+.home-status { display: inline-flex; align-items: center; gap: .55rem; color: var(--muted); font-size: .62rem; text-transform: uppercase; letter-spacing: .16em; }
+.home-status-dot { width: .45rem; height: .45rem; border-radius: 50%; background: #8fd18f; box-shadow: 0 0 10px #8fd18f; animation: bv-pulse 1.6s ease-in-out infinite; }
+.home-main { display: grid; min-height: calc(100vh - 90px); padding: 0 clamp(1rem, 4vw, 3.5rem) 3rem; }
+.home-hero { display: grid; place-content: center; justify-items: center; gap: 1.4rem; text-align: center; transition: opacity .45s ease, transform .55s cubic-bezier(.2,.8,.2,1); }
+.home-kicker { color: var(--muted); font-size: .66rem; letter-spacing: .22em; text-transform: uppercase; }
+.home-title { display: grid; gap: .2rem; margin: 0; font-size: clamp(2.3rem, 8.2vw, 7.2rem); font-weight: 800; letter-spacing: -.045em; line-height: .92; }
+.home-title-line { display: block; color: transparent; -webkit-text-stroke: 1px rgba(245,245,245,.55); animation: home-in .9s cubic-bezier(.2,.8,.2,1) both; }
+.home-title-strong { color: var(--white); -webkit-text-stroke: 0; background: linear-gradient(180deg, #ffffff 30%, #8a8a8a); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 40px rgba(255,255,255,.12); animation-delay: .15s; position: relative; }
+.home-title-strong::after { content: ''; position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: rgba(255,255,255,.7); opacity: 0; animation: home-glitch 5s steps(1) 1.2s infinite; }
+@keyframes home-glitch { 0%, 100% { opacity: 0; } 92% { opacity: .8; transform: translateX(-6px); } 94% { opacity: 0; } 96% { opacity: .5; transform: translateX(8px) translateY(-14px); } }
+@keyframes home-in { from { opacity: 0; transform: translateY(24px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.home-sub { max-width: 520px; color: var(--muted); font-size: .9rem; line-height: 1.6; animation: home-in .9s .3s cubic-bezier(.2,.8,.2,1) both; }
+.home-enter { position: relative; display: inline-flex; align-items: center; gap: .8rem; margin-top: .6rem; padding: 1.05rem 1.7rem; border: 1px solid rgba(245,245,245,.7); background: rgba(8,8,8,.6);
+  color: var(--white); font: 700 .74rem var(--mono); letter-spacing: .2em; text-transform: uppercase; cursor: pointer; overflow: hidden; animation: home-in .9s .45s cubic-bezier(.2,.8,.2,1) both;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 0 40px rgba(255,255,255,.08); transition: color .25s ease, box-shadow .25s ease; }
+.home-enter::before { content: ''; position: absolute; inset: 0; background: var(--white); transform: translateX(-101%); transition: transform .35s cubic-bezier(.2,.8,.2,1); z-index: -1; }
+.home-enter::after { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(255,255,255,.15); pointer-events: none; }
+.home-enter:hover, .home-enter:focus-visible { color: var(--black); box-shadow: 0 0 60px rgba(255,255,255,.25); }
+.home-enter:hover::before, .home-enter:focus-visible::before { transform: none; }
+.home-enter .icon { transition: transform .25s ease; }
+.home-enter:hover .icon { transform: translateX(4px); }
+.home-tools { display: none; align-content: start; gap: 1.2rem; width: min(100%, 1120px); margin: 0 auto; padding-top: 1rem; }
+.home-tools-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.home-open .home-hero { display: none; }
+.home-open .home-tools { display: grid; animation: home-in .5s cubic-bezier(.2,.8,.2,1) both; }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+.home-group { grid-column: 1 / -1; margin-top: .8rem; padding-bottom: .5rem; border-bottom: 1px solid var(--line); color: var(--muted); font: 700 .62rem var(--mono); text-transform: uppercase; letter-spacing: .2em; }
+.home-card { position: relative; display: grid; gap: .55rem; align-content: start; min-height: 170px; padding: 1.1rem 1.1rem 1.2rem; border: 1px solid var(--line); background: rgba(18,18,18,.82);
+  color: var(--text); text-decoration: none; overflow: hidden; backdrop-filter: blur(6px); animation: home-card-in .55s cubic-bezier(.2,.8,.2,1) both;
+  transition: border-color .2s ease, transform .25s cubic-bezier(.2,.8,.2,1), background-color .2s ease, opacity .3s ease; }
+@keyframes home-card-in { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+.home-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.07) 50%, transparent 70%); transform: translateX(-100%); transition: transform .6s ease; }
+.home-card:hover, .home-card:focus-visible { border-color: rgba(245,245,245,.6); background: rgba(28,28,28,.9); transform: translateY(-3px); outline: none; }
+.home-card:hover::before, .home-card:focus-visible::before { transform: translateX(100%); }
+.home-card-index { position: absolute; top: 1rem; right: 1rem; color: var(--line-strong); font-size: .65rem; }
+.home-card-icon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 1px solid var(--line-strong); color: var(--white); }
+.home-card-icon .icon { width: 1.25rem; height: 1.25rem; }
+.home-card strong { margin-top: .35rem; color: var(--white); font-size: 1.02rem; }
+.home-card-desc { color: var(--muted); font-size: .74rem; line-height: 1.5; }
+.home-card-go { position: absolute; right: 1rem; bottom: 1rem; color: var(--muted); transition: transform .2s ease, color .2s ease; }
+.home-card:hover .home-card-go { color: var(--white); transform: translateX(4px); }
+.home-leaving .home-card:not(.home-card-picked) { opacity: 0; transform: scale(.96); }
+.home-card-picked { border-color: var(--white); background: var(--white); color: var(--black); transform: scale(1.03); }
+.home-card-picked strong, .home-card-picked .home-card-desc, .home-card-picked .home-card-icon, .home-card-picked .home-card-go { color: var(--black); border-color: var(--black); }
+@media (max-width: 720px) {
+  .home-top { padding-top: 1.1rem; }
+  .home-status { font-size: .55rem; letter-spacing: .1em; }
+  .home-card { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home *, .home *::before, .home *::after { animation: none !important; transition: none !important; }
+}
