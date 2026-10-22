@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Deroflux — ferramentas</title>
+  <meta name="description" content="Ferramentas de vídeo e imagem que rodam no seu navegador: limpar metadados, sobreposição em feed e story, filtro de vídeo e melhorar imagem.">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="core.js" defer></script>
+  <script src="cleaner.js" defer></script>
+  <script src="image-cleaner.js" defer></script>
+  <script src="image-utils.js" defer></script>
+  <script src="video-studio.js" defer></script>
+  <script src="tool-limpar-video.js" defer></script>
+  <script src="tool-sobrepor-video.js" defer></script>
+  <script src="tool-palco.js" defer></script>
+  <script src="tool-limpar-imagem.js" defer></script>
+  <script src="tool-melhorar-imagem.js" defer></script>
+  <script src="tool-sobrepor-imagem.js" defer></script>
+</head>
+<body>
+  <div class="shell tools-shell">
+    <aside class="sidebar">
+      <div>
+        <a class="brand" href="#limpar-video"><img src="mark.svg" alt="" width="34" height="34"><span>DERO<strong>FLUX</strong></span></a>
+        <p class="sidebar-caption">ferramentas</p>
+        <nav class="tool-nav" id="tool-nav" aria-label="Ferramentas"></nav>
+      </div>
+    </aside>
+    <main class="workspace" id="panes"></main>
+  </div>
+  <noscript><p class="notice notice-error">Ative o JavaScript para usar as ferramentas.</p></noscript>
+</body>
+</html>
