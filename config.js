@@ -8,5 +8,5 @@
  * (fica salvo só no navegador de quem colou).
  */
 window.DF_CONFIG = {
-  baixarVideoServidor: 'https://baixar-video-xxxx.onrender.com',
+  baixarVideoServidor: 'https://baixar-video-oce2.onrender.com',
 };
