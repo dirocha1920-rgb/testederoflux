@@ -309,9 +309,26 @@ h2 { margin-top: .48rem; color: var(--white); font-size: 1.2rem; letter-spacing:
 .file-drop small { color: var(--muted); font-size: .7rem; }
 .file-drop .upload-icon { font-size: 1.4rem; color: var(--primary); }
 .file-drop-small { padding: 1rem; }
-.overlay-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; max-width: 180px; }
-.overlay-pos { aspect-ratio: 1; border: 1px solid var(--line-strong); background: var(--surface); color: var(--muted); cursor: pointer; font-size: 1rem; }
-.overlay-pos-on { border-color: var(--primary); color: var(--primary); background: var(--surface-raised); }
+.ov-host { position: relative; overflow: hidden; }
+.ov-box { position: absolute; z-index: 2; box-sizing: border-box; border: 1px dashed rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.55); cursor: move; touch-action: none; }
+.ov-box:hover, .ov-box:focus-visible, .ov-active { border-style: solid; outline: none; }
+.ov-box:focus-visible { border-color: var(--primary); }
+.ov-locked { pointer-events: none; opacity: .35; }
+.ov-handle { position: absolute; width: 14px; height: 14px; background: #fff; border: 1px solid #000; }
+.ov-nw { left: -7px; top: -7px; cursor: nwse-resize; }
+.ov-ne { right: -7px; top: -7px; cursor: nesw-resize; }
+.ov-sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.ov-se { right: -7px; bottom: -7px; cursor: nwse-resize; }
+@media (pointer: coarse) {
+  .ov-handle { width: 24px; height: 24px; }
+  .ov-nw { left: -12px; top: -12px; } .ov-ne { right: -12px; top: -12px; } .ov-sw { left: -12px; bottom: -12px; } .ov-se { right: -12px; bottom: -12px; }
+}
+.ov-ready canvas { cursor: crosshair; }
+.ov-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ov-action { padding: .4rem .6rem; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); cursor: pointer; font-size: .72rem; }
+.ov-action:hover:not(:disabled) { border-color: var(--primary); color: var(--white); }
+.ov-action:disabled { opacity: .45; cursor: default; }
+.ov-tip { color: var(--muted); font-size: .7rem; line-height: 1.45; }
 .image-tool input[type="range"] { width: 100%; accent-color: var(--primary); }
 
 /* Filtro de Vídeo (classes palco-*) */
@@ -416,7 +433,6 @@ h2 { margin-top: .48rem; color: var(--white); font-size: 1.2rem; letter-spacing:
 .job-card-main-thumb ~ .job-error, .job-card-main-thumb ~ .found-title, .job-card-main-thumb ~ .found-list, .job-card-main-thumb ~ .check-list, .job-card-main-thumb ~ .job-success { margin-left: 3.75rem; }
 .scale-size { color: var(--muted); font: .62rem var(--mono); }
 .profile-fieldset .scale-options .profile-card { min-height: 0; }
-.tool-panel .overlay-grid, .palco-panel .overlay-grid { max-width: 150px; }
 .palco-panel input[type="range"], .tool-panel input[type="range"] { width: 100%; accent-color: var(--primary); }
 @media (max-width: 680px) {
   .job-card-main-thumb { grid-template-columns: 3rem minmax(0, 1fr) 2rem; }

@@ -3,16 +3,15 @@
   'use strict';
   var DF = window.DF, h = DF.h, IU = window.ImageUtils;
 
-  // Desenha a sobreposição com a mesma regra do servidor (tamanho = % da largura da base)
-  function drawOverlay(ctx, baseW, baseH, mark, settings) {
+  // Desenha a sobreposição; scale = 1 na imagem final, menor na prévia.
+  // O que passar das bordas é cortado pelo próprio quadro.
+  function drawOverlay(ctx, W, H, mark, place, opacity, scale) {
     if (!mark) return;
-    var w = Math.max(1, Math.floor(baseW * settings.size / 100));
-    var hh = Math.max(1, Math.floor(mark.height * (w / mark.width)));
-    var at = DF.anchor(baseW, baseH, w, hh, settings.position);
+    var r = DF.overlayRect(W, H, mark, place), k = scale || 1;
     ctx.save();
-    ctx.globalAlpha = settings.opacity / 100;
+    ctx.globalAlpha = opacity / 100;
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(mark.img, at.x, at.y, w, hh);
+    ctx.drawImage(mark.img, r.x * k, r.y * k, r.w * k, r.h * k);
     ctx.restore();
   }
 
@@ -23,7 +22,7 @@
     mount: function (body, ctx) {
       var notice = DF.noticeBox();
       var base = null, baseFile = null, mark = null, resultLink = null;
-      var settings = { position: 'bottom-right', opacity: 100, size: 30 };
+      var settings = { opacity: 100 };
       var canvas = h('canvas', { 'aria-label': 'Prévia da imagem com a sobreposição' });
       var empty = h('div', { class: 'tool-preview-empty', text: 'Escolha a foto e a sobreposição para ver a prévia' });
       var preview = h('div', { class: 'tool-preview' }, empty, canvas);
@@ -34,14 +33,22 @@
       var opacityOut = h('output', { class: 'mono', text: '100%' });
       var sizeOut = h('output', { class: 'mono', text: '30%' });
       var opacity = h('input', { type: 'range', min: '10', max: '100', step: '5', value: '100', id: 'sobrepor-img-opacidade' });
-      var size = h('input', { type: 'range', min: '5', max: '100', step: '5', value: '30', id: 'sobrepor-img-tamanho' });
+      var size = h('input', { type: 'range', min: '2', max: '500', step: '1', value: '30', id: 'sobrepor-img-tamanho' });
+      var busy = false;
+      var editor = DF.overlayEditor({
+        host: preview, canvas: canvas,
+        mark: function () { return base ? mark : null; },
+        frame: function () { return outSize(); },
+        disabled: function () { return busy; },
+        onChange: function (v) { var pct = Math.round(v.sw * 100); size.value = String(pct); sizeOut.textContent = pct + '%'; resultBox.hidden = true; draw(); },
+      });
       var fmt = { format: DF.FORMATS[0], fit: 'cover' };
-      var format = DF.formatControls('sobrepor-img', function (v) { fmt = v; resultBox.hidden = true; draw(); });
+      var format = DF.formatControls('sobrepor-img', function (v) { fmt = v; resultBox.hidden = true; draw(); editor.layout(); });
       var go = h('button', { type: 'button', class: 'button button-primary button-wide', text: 'Gerar imagem', disabled: true });
       var resultBox = h('div', { class: 'palco-result', hidden: true });
 
       opacity.addEventListener('input', function () { settings.opacity = Number(opacity.value); opacityOut.textContent = opacity.value + '%'; draw(); });
-      size.addEventListener('input', function () { settings.size = Number(size.value); sizeOut.textContent = size.value + '%'; draw(); });
+      size.addEventListener('input', function () { editor.setWidth(Number(size.value) / 100); });
 
       body.appendChild(notice.el);
       body.appendChild(h('div', { class: 'tool-grid tool-grid-wide' },
@@ -50,9 +57,11 @@
           h('div', { class: 'palco-group' }, h('span', { class: 'palco-label', text: 'Foto' }), baseDrop.el),
           format.el,
           h('div', { class: 'palco-group' }, h('span', { class: 'palco-label', text: 'Sobreposição' }), markDrop.el),
-          h('div', { class: 'palco-group' }, h('span', { class: 'palco-label', text: 'Posição' }), DF.positionGrid(settings.position, function (p) { settings.position = p; draw(); })),
+          h('div', { class: 'palco-group' }, h('span', { class: 'palco-label', text: 'Posição e tamanho' }),
+            h('small', { class: 'ov-tip', text: 'Arraste a imagem na prévia para mover. Puxe os cantos ou use a rodinha do mouse para mudar o tamanho. Pode passar das bordas: o que sair do quadro some.' }),
+            editor.actions),
           h('label', { class: 'palco-group', for: 'sobrepor-img-opacidade' }, h('span', { class: 'palco-label' }, 'Opacidade ', opacityOut), opacity),
-          h('label', { class: 'palco-group', for: 'sobrepor-img-tamanho' }, h('span', { class: 'palco-label' }, 'Tamanho (da largura) ', sizeOut), size),
+          h('label', { class: 'palco-group', for: 'sobrepor-img-tamanho' }, h('span', { class: 'palco-label' }, 'Tamanho (% da largura) ', sizeOut), size),
           h('div', { class: 'palco-group' }, go, resultBox))));
 
       function pick(file, which) {
@@ -63,6 +72,7 @@
           else { if (mark) URL.revokeObjectURL(mark.url); mark = loaded; markDrop.setTitle(file.name); }
           resultBox.hidden = true;
           draw();
+          if (base && mark) editor.markLoaded(); else editor.layout();
         }, function (error) { notice.set(error.message); });
       }
 
@@ -87,21 +97,13 @@
         var c = canvas.getContext('2d');
         c.imageSmoothingQuality = 'high';
         drawBase(c, w, hh);
-        if (mark) {
-          // mesma conta da imagem final, em escala
-          var fw = Math.max(1, Math.floor(out.w * settings.size / 100));
-          var fh = Math.max(1, Math.floor(mark.height * (fw / mark.width)));
-          var at = DF.anchor(out.w, out.h, fw, fh, settings.position);
-          c.globalAlpha = settings.opacity / 100;
-          c.drawImage(mark.img, at.x * scale, at.y * scale, fw * scale, fh * scale);
-          c.globalAlpha = 1;
-        }
+        drawOverlay(c, out.w, out.h, mark, editor.value(), settings.opacity, scale);
         canvas.hidden = false; empty.hidden = true;
       }
 
       go.addEventListener('click', function () {
         if (!base || !mark) return;
-        go.disabled = true; go.textContent = 'Gerando…';
+        go.disabled = true; go.textContent = 'Gerando…'; busy = true; editor.setDisabled(true);
         ctx.setActivity({ active: true, unsaved: true });
         var out;
         try {
@@ -109,7 +111,7 @@
           var dim = outSize();
           out = IU.makeCanvas(dim.w, dim.h);
           drawBase(out.ctx, dim.w, dim.h);
-          drawOverlay(out.ctx, dim.w, dim.h, mark, settings);
+          drawOverlay(out.ctx, dim.w, dim.h, mark, editor.value(), settings.opacity, 1);
         } catch (error) { done(error); return; }
         IU.encode(out.canvas, IU.kindOf(baseFile)).then(function (encoded) {
           if (resultLink) resultLink._revoke();
@@ -123,7 +125,7 @@
       });
 
       function done(error, ok) {
-        go.textContent = 'Gerar imagem';
+        go.textContent = 'Gerar imagem'; busy = false; editor.setDisabled(false);
         go.disabled = !(base && mark);
         if (error) notice.set(error.message || 'Não foi possível gerar a imagem.');
         ctx.setActivity({ active: false, unsaved: !!ok });

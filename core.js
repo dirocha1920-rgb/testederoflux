@@ -110,22 +110,148 @@
     return a;
   }
 
-  // Grade 3×3 de posição (igual à do Deroflux)
-  var POSITIONS = [['top-left', '↖'], ['top', '↑'], ['top-right', '↗'], ['left', '←'], ['center', '•'], ['right', '→'], ['bottom-left', '↙'], ['bottom', '↓'], ['bottom-right', '↘']];
-  var POSITION_NAMES = { 'top-left': 'superior esquerdo', top: 'topo', 'top-right': 'superior direito', left: 'esquerda', center: 'centro', right: 'direita', 'bottom-left': 'inferior esquerdo', bottom: 'base', 'bottom-right': 'inferior direito' };
-  function positionGrid(value, onChange) {
-    var grid = h('div', { class: 'overlay-grid', role: 'group', 'aria-label': 'Posição' });
-    POSITIONS.forEach(function (p) {
-      var b = h('button', { type: 'button', class: 'overlay-pos', 'aria-label': POSITION_NAMES[p[0]], 'aria-pressed': String(p[0] === value), text: p[1] });
-      if (p[0] === value) b.classList.add('overlay-pos-on');
-      b.addEventListener('click', function () {
-        Array.prototype.forEach.call(grid.children, function (c) { c.classList.remove('overlay-pos-on'); c.setAttribute('aria-pressed', 'false'); });
-        b.classList.add('overlay-pos-on'); b.setAttribute('aria-pressed', 'true');
-        onChange(p[0]);
-      });
-      grid.appendChild(b);
+  // ------------------------------------------------------------ editor da sobreposição
+  // A sobreposição é guardada como centro (cx, cy, fração do quadro) e largura (sw, fração da
+  // largura do quadro). Pode passar das bordas: o que ficar fora do quadro simplesmente some.
+  function overlayRect(W, H, mark, s) {
+    var w = s.sw * W, hh = w * mark.height / mark.width;
+    return { x: s.cx * W - w / 2, y: s.cy * H - hh / 2, w: w, h: hh };
+  }
+
+  // Caixa por cima da prévia: arrastar move, os cantos mudam o tamanho, a rodinha do mouse também.
+  // o = { host, canvas, mark(), frame() -> {w,h}, disabled(), onChange(s) }
+  function overlayEditor(o) {
+    var MIN = 0.02, MAX = 5;
+    var s = { cx: 0.5, cy: 0.5, sw: 0.3 }, placed = false, drag = null;
+    var box = h('div', { class: 'ov-box', tabindex: '0', hidden: true,
+      'aria-label': 'Sobreposição. Arraste para mover; puxe os cantos ou use a rodinha do mouse para mudar o tamanho. No teclado: setas movem, + e - mudam o tamanho.' },
+      ['nw', 'ne', 'sw', 'se'].map(function (c) { return h('span', { class: 'ov-handle ov-' + c, 'data-corner': c }); }));
+    o.host.classList.add('ov-host');
+    o.host.appendChild(box);
+
+    var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
+    var off = function () { return !o.mark() || (o.disabled && o.disabled()); };
+
+    function layout() {
+      var m = o.mark();
+      var cr = o.canvas.getBoundingClientRect();
+      if (!m || o.canvas.hidden || !cr.width) { box.hidden = true; o.host.classList.remove('ov-ready'); return; }
+      var hr = o.host.getBoundingClientRect(), F = o.frame(), k = cr.width / F.w, r = overlayRect(F.w, F.h, m, s);
+      box.hidden = false;
+      box.style.left = (cr.left - hr.left - o.host.clientLeft + r.x * k) + 'px';
+      box.style.top = (cr.top - hr.top - o.host.clientTop + r.y * k) + 'px';
+      box.style.width = (r.w * k) + 'px';
+      box.style.height = (r.h * k) + 'px';
+      box.classList.toggle('ov-locked', !!(o.disabled && o.disabled()));
+      o.host.classList.add('ov-ready');
+    }
+    function changed() { placed = true; layout(); o.onChange(s); }
+
+    function toFrame(e) {
+      var F = o.frame(), cr = o.canvas.getBoundingClientRect();
+      return { x: (e.clientX - cr.left) / cr.width * F.w, y: (e.clientY - cr.top) / cr.height * F.h };
+    }
+    function begin(e, corner) {
+      var F = o.frame();
+      drag = { corner: corner, p0: toFrame(e), s0: { cx: s.cx, cy: s.cy, sw: s.sw }, r0: overlayRect(F.w, F.h, o.mark(), s) };
+      box.classList.add('ov-active');
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+      window.addEventListener('pointercancel', end);
+    }
+    function move(e) {
+      if (!drag || !o.mark()) return;
+      e.preventDefault();
+      var F = o.frame(), p = toFrame(e), m = o.mark();
+      if (!drag.corner) {
+        s.cx = clamp(drag.s0.cx + (p.x - drag.p0.x) / F.w, 0, 1);
+        s.cy = clamp(drag.s0.cy + (p.y - drag.p0.y) / F.h, 0, 1);
+      } else {
+        // o canto oposto fica parado; mantém a proporção da imagem
+        var r = drag.r0, c = drag.corner, aspect = m.width / m.height;
+        var ax = c.indexOf('w') >= 0 ? r.x + r.w : r.x, ay = c.indexOf('n') >= 0 ? r.y + r.h : r.y;
+        var w = Math.max(Math.abs(p.x - ax), Math.abs(p.y - ay) * aspect);
+        w = clamp(w, MIN * F.w, MAX * F.w);
+        var hh = w / aspect;
+        var x = c.indexOf('w') >= 0 ? ax - w : ax, y = c.indexOf('n') >= 0 ? ay - hh : ay;
+        s.sw = w / F.w; s.cx = (x + w / 2) / F.w; s.cy = (y + hh / 2) / F.h;
+      }
+      changed();
+    }
+    function end() {
+      drag = null; box.classList.remove('ov-active');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    }
+
+    box.addEventListener('pointerdown', function (e) {
+      if (off() || e.button > 0) return;
+      e.preventDefault(); box.focus({ preventScroll: true });
+      begin(e, e.target.getAttribute('data-corner'));
     });
-    return grid;
+    // clicar fora da caixa (com o mouse) leva a sobreposição até ali e já começa a arrastar
+    o.canvas.addEventListener('pointerdown', function (e) {
+      if (off() || e.button > 0 || e.pointerType === 'touch') return;
+      e.preventDefault();
+      var F = o.frame(), p = toFrame(e);
+      s.cx = clamp(p.x / F.w, 0, 1); s.cy = clamp(p.y / F.h, 0, 1);
+      changed(); box.focus({ preventScroll: true });
+      begin(e, null);
+    });
+    var wheel = function (e) {
+      if (off()) return;
+      e.preventDefault();
+      s.sw = clamp(s.sw * (e.deltaY < 0 ? 1.06 : 1 / 1.06), MIN, MAX);
+      changed();
+    };
+    box.addEventListener('wheel', wheel, { passive: false });
+    o.canvas.addEventListener('wheel', wheel, { passive: false });
+    box.addEventListener('keydown', function (e) {
+      if (off()) return;
+      var step = e.shiftKey ? 0.05 : 0.01, used = true;
+      if (e.key === 'ArrowLeft') s.cx = clamp(s.cx - step, 0, 1);
+      else if (e.key === 'ArrowRight') s.cx = clamp(s.cx + step, 0, 1);
+      else if (e.key === 'ArrowUp') s.cy = clamp(s.cy - step, 0, 1);
+      else if (e.key === 'ArrowDown') s.cy = clamp(s.cy + step, 0, 1);
+      else if (e.key === '+' || e.key === '=') s.sw = clamp(s.sw * 1.05, MIN, MAX);
+      else if (e.key === '-' || e.key === '_') s.sw = clamp(s.sw / 1.05, MIN, MAX);
+      else used = false;
+      if (used) { e.preventDefault(); changed(); }
+    });
+    if (window.ResizeObserver) new ResizeObserver(layout).observe(o.canvas);
+    window.addEventListener('resize', layout);
+
+    function preset(name) {
+      var m = o.mark(); if (!m) return;
+      var F = o.frame(), ratio = (F.h / F.w) * (m.width / m.height);
+      if (name === 'centro') { s.cx = 0.5; s.cy = 0.5; }
+      else if (name === 'largura') { s.sw = 1; s.cx = 0.5; }
+      else if (name === 'cobrir') { s.sw = Math.max(1, ratio); s.cx = 0.5; s.cy = 0.5; }
+      else if (name === 'inteira') { s.sw = Math.min(1, ratio); s.cx = 0.5; s.cy = 0.5; }
+      else { // padrão: canto inferior direito, 30% da largura, margem de 3%
+        var mw = F.w * 0.3, mh = mw * m.height / m.width, at = anchor(F.w, F.h, mw, mh, 'bottom-right');
+        s.sw = 0.3; s.cx = (at.x + mw / 2) / F.w; s.cy = (at.y + mh / 2) / F.h;
+      }
+      changed();
+    }
+    var actions = h('div', { class: 'ov-actions' }, [['centro', 'Centralizar'], ['largura', 'Encher a largura'], ['cobrir', 'Cobrir a tela'], ['inteira', 'Caber inteira'], ['padrao', 'Voltar ao padrão']].map(function (p) {
+      var b = h('button', { type: 'button', class: 'ov-action', text: p[1] });
+      b.addEventListener('click', function () { preset(p[0]); });
+      return b;
+    }));
+
+    return {
+      value: function () { return s; },
+      actions: actions,
+      layout: layout,
+      setWidth: function (sw) { s.sw = clamp(sw, MIN, MAX); changed(); },
+      markLoaded: function () { if (!placed) preset('padrao'); else changed(); },
+      setDisabled: function (d) {
+        Array.prototype.forEach.call(actions.children, function (b) { b.disabled = d; });
+        layout();
+      },
+    };
   }
 
   // Calcula onde desenhar a sobreposição (mesma regra do servidor: margem de 3% da largura, mínimo 8 px)
@@ -241,7 +367,7 @@
 
   window.DF = {
     h: h, svg: svg, formatBytes: formatBytes, stem: stem, ext: ext, noticeBox: noticeBox, dropZone: dropZone,
-    downloadLink: downloadLink, positionGrid: positionGrid, anchor: anchor, register: register,
+    downloadLink: downloadLink, overlayRect: overlayRect, overlayEditor: overlayEditor, anchor: anchor, register: register,
     FORMATS: FORMATS, fitRect: fitRect, formatControls: formatControls,
     current: function () { return current; },
   };
