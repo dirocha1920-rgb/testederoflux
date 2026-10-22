@@ -493,7 +493,7 @@
       var tools = h('div', { class: 'bv-tools' },
         h('div', { class: 'bv-tabs', role: 'tablist', 'aria-label': 'Modo' }, tabSingle, tabBatch),
         singleView, batchView,
-        h('p', { class: 'bv-legal', text: 'Use para baixar vídeos seus ou com permissão de quem criou. Os arquivos passam pelo servidor só durante o download.' }));
+        h('p', { class: 'bv-legal', text: '' }));
       body.appendChild(h('div', { class: 'bv' }, serverBar, setup, tools));
       fillPerProfile(); paintHandle();
 
