@@ -18,6 +18,13 @@
       var notice = DF.noticeBox();
       var list = h('div');
       var clearBtn = h('button', { class: 'text-button', type: 'button', text: 'Limpar a lista', hidden: true });
+      function cleanName(job) { return DF.stem(job.file.name) + '-limpa' + (DF.ext(job.file.name) || '.jpg'); }
+      var zip = DF.zipButton({
+        getFiles: function () { return jobs.filter(function (j) { return j.stage === 'pronto'; }).slice().reverse().map(function (j) { return { name: cleanName(j), blob: j.result.blob }; }); },
+        zipName: function () { return 'fotos-limpas_' + DF.stamp() + '.zip'; },
+        onDone: function () { jobs.forEach(function (j) { if (j.stage === 'pronto') j.downloaded = true; }); report(); },
+        onError: function () { notice.set('Não foi possível montar o zip neste navegador. Baixe as fotos uma por uma.'); },
+      });
       var drop = DF.dropZone({
         accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp', multiple: true,
         title: 'Arraste as fotos para cá', pickLabel: 'escolha os arquivos', hint: 'JPG, PNG ou WebP',
@@ -30,7 +37,7 @@
       body.appendChild(h('section', { class: 'queue-section' },
         h('div', { class: 'section-heading' },
           h('div', null, h('div', { class: 'panel-kicker', text: '02 / resultados' }), h('h2', { text: 'Fotos limpas' })),
-          h('div', { class: 'queue-actions' }, clearBtn)),
+          h('div', { class: 'queue-actions' }, clearBtn, zip.el)),
         list));
       clearBtn.addEventListener('click', function () { jobs.filter(function (j) { return j.stage === 'pronto' || j.stage === 'erro'; }).forEach(removeJob); });
 
@@ -76,6 +83,7 @@
       function render() {
         list.textContent = '';
         clearBtn.hidden = !jobs.some(function (j) { return j.stage === 'pronto' || j.stage === 'erro'; });
+        zip.update(jobs.filter(function (j) { return j.stage === 'pronto'; }).length);
         report();
         if (!jobs.length) {
           list.appendChild(h('div', { class: 'empty-state' }, h('span', { class: 'empty-number', text: '00' }),
@@ -103,7 +111,7 @@
           el.appendChild(h('div', { class: 'job-success', role: 'status' },
             h('span', { class: 'success-mark', 'aria-hidden': 'true' }, DF.svg('check')),
             h('span', { class: 'job-success-copy', text: r.residual.length ? 'Limpeza concluída com avisos.' : 'Metadados limpos com sucesso!' }),
-            h('a', { class: 'button button-secondary job-download', href: job.url, download: DF.stem(job.file.name) + '-limpa' + (DF.ext(job.file.name) || '.jpg'), onclick: function () { job.downloaded = true; report(); } }, DF.svg('download'), ' Baixar foto')));
+            h('a', { class: 'button button-secondary job-download', href: job.url, download: cleanName(job), onclick: function () { job.downloaded = true; report(); } }, DF.svg('download'), ' Baixar foto')));
         }
         return el;
       }

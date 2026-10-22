@@ -298,6 +298,123 @@
     };
   }
 
+  // ------------------------------------------------------------ zip (sem compressão)
+  // Vídeos e fotos já são comprimidos, então o zip só "embala": rápido e sem perda.
+  // Os arquivos não são copiados para a memória; só são lidos aos pedaços para o CRC.
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+    return t;
+  })();
+  function crcUpdate(crc, bytes) {
+    for (var i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return crc;
+  }
+  function readChunk(blob) {
+    if (blob.arrayBuffer) return blob.arrayBuffer();
+    return new Promise(function (ok, fail) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = fail; r.readAsArrayBuffer(blob); });
+  }
+  async function crc32(blob, onBytes) {
+    var crc = 0xFFFFFFFF, CHUNK = 8 * 1024 * 1024;
+    for (var pos = 0; pos < blob.size; pos += CHUNK) {
+      crc = crcUpdate(crc, new Uint8Array(await readChunk(blob.slice(pos, pos + CHUNK))));
+      onBytes(Math.min(CHUNK, blob.size - pos));
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  // Evita nomes repetidos dentro do zip: "video.mp4", "video (2).mp4"…
+  function uniqueNames(names) {
+    var seen = {};
+    return names.map(function (name) {
+      var key = name.toLowerCase();
+      if (!seen[key]) { seen[key] = 1; return name; }
+      var n = ++seen[key], dot = name.lastIndexOf('.');
+      var out = dot > 0 ? name.slice(0, dot) + ' (' + n + ')' + name.slice(dot) : name + ' (' + n + ')';
+      seen[out.toLowerCase()] = 1;
+      return out;
+    });
+  }
+  // entries: [{ name, blob }]; onProgress(0..1)
+  async function makeZip(entries, onProgress) {
+    var enc = new TextEncoder();
+    var names = uniqueNames(entries.map(function (e) { return e.name; }));
+    var total = entries.reduce(function (s, e) { return s + e.blob.size; }, 0), done = 0;
+    var big = total + entries.length * 1024 >= 0xFFFFFFFF; // passa de 4 GB: usa ZIP64
+    var d = new Date();
+    var dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    var dosDate = ((Math.max(1980, d.getFullYear()) - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    var parts = [], central = [], offset = 0, centralSize = 0;
+    var u64 = function (view, at, v) { view.setUint32(at, v % 0x100000000, true); view.setUint32(at + 4, Math.floor(v / 0x100000000), true); };
+    for (var i = 0; i < entries.length; i++) {
+      var blob = entries[i].blob, name = enc.encode(names[i]), size = blob.size;
+      var crc = await crc32(blob, function (n) { done += n; if (onProgress) onProgress(total ? done / total : 1); });
+      var version = big ? 45 : 20;
+      var local = new DataView(new ArrayBuffer(30 + name.length + (big ? 20 : 0)));
+      local.setUint32(0, 0x04034b50, true); local.setUint16(4, version, true); local.setUint16(6, 0x0800, true);
+      local.setUint16(8, 0, true); local.setUint16(10, dosTime, true); local.setUint16(12, dosDate, true);
+      local.setUint32(14, crc, true);
+      local.setUint32(18, big ? 0xFFFFFFFF : size, true); local.setUint32(22, big ? 0xFFFFFFFF : size, true);
+      local.setUint16(26, name.length, true); local.setUint16(28, big ? 20 : 0, true);
+      new Uint8Array(local.buffer).set(name, 30);
+      if (big) { var lx = 30 + name.length; local.setUint16(lx, 1, true); local.setUint16(lx + 2, 16, true); u64(local, lx + 4, size); u64(local, lx + 12, size); }
+      var cen = new DataView(new ArrayBuffer(46 + name.length + (big ? 28 : 0)));
+      cen.setUint32(0, 0x02014b50, true); cen.setUint16(4, version, true); cen.setUint16(6, version, true); cen.setUint16(8, 0x0800, true);
+      cen.setUint16(10, 0, true); cen.setUint16(12, dosTime, true); cen.setUint16(14, dosDate, true); cen.setUint32(16, crc, true);
+      cen.setUint32(20, big ? 0xFFFFFFFF : size, true); cen.setUint32(24, big ? 0xFFFFFFFF : size, true);
+      cen.setUint16(28, name.length, true); cen.setUint16(30, big ? 28 : 0, true);
+      cen.setUint32(42, big ? 0xFFFFFFFF : offset, true);
+      new Uint8Array(cen.buffer).set(name, 46);
+      if (big) { var cx = 46 + name.length; cen.setUint16(cx, 1, true); cen.setUint16(cx + 2, 24, true); u64(cen, cx + 4, size); u64(cen, cx + 12, size); u64(cen, cx + 20, offset); }
+      parts.push(local.buffer, blob);
+      central.push(cen.buffer);
+      offset += local.byteLength + size;
+      centralSize += cen.byteLength;
+    }
+    var tail = [];
+    if (big) {
+      var z = new DataView(new ArrayBuffer(56 + 20));
+      z.setUint32(0, 0x06064b50, true); u64(z, 4, 44); z.setUint16(12, 45, true); z.setUint16(14, 45, true);
+      u64(z, 24, entries.length); u64(z, 32, entries.length); u64(z, 40, centralSize); u64(z, 48, offset);
+      z.setUint32(56, 0x07064b50, true); u64(z, 64, offset + centralSize); z.setUint32(72, 1, true);
+      tail.push(z.buffer);
+    }
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, big ? 0xFFFF : entries.length, true); end.setUint16(10, big ? 0xFFFF : entries.length, true);
+    end.setUint32(12, big ? 0xFFFFFFFF : centralSize, true); end.setUint32(16, big ? 0xFFFFFFFF : offset, true);
+    tail.push(end.buffer);
+    return new Blob(parts.concat(central, tail), { type: 'application/zip' });
+  }
+
+  // Botão "Baixar todos (.zip)". getFiles() devolve [{ name, blob }] dos arquivos prontos.
+  function zipButton(options) {
+    var label = h('span', { text: 'Baixar todos (.zip)' });
+    var btn = h('button', { type: 'button', class: 'button button-primary zip-all', hidden: true }, svg('download'), label);
+    var working = false;
+    btn.addEventListener('click', async function () {
+      var files = options.getFiles();
+      if (working || !files.length) return;
+      working = true; btn.disabled = true;
+      try {
+        var blob = await makeZip(files, function (p) { label.textContent = 'Preparando o zip… ' + Math.round(p * 100) + '%'; });
+        var url = URL.createObjectURL(blob);
+        var a = h('a', { href: url, download: options.zipName(), hidden: true });
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+        if (options.onDone) options.onDone(files);
+      } catch (error) {
+        if (options.onError) options.onError(error);
+      } finally {
+        working = false; btn.disabled = false; label.textContent = 'Baixar todos (.zip)';
+      }
+    });
+    return { el: btn, update: function (count) { btn.hidden = count < 2; if (!working) label.textContent = 'Baixar todos (.zip) · ' + count; } };
+  }
+  function stamp() {
+    var d = new Date(), p = function (n) { return ('0' + n).slice(-2); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
+  }
+
   // ------------------------------------------------------------ menu e telas
   function register(tool) { tools.push(tool); }
 
@@ -368,7 +485,7 @@
   window.DF = {
     h: h, svg: svg, formatBytes: formatBytes, stem: stem, ext: ext, noticeBox: noticeBox, dropZone: dropZone,
     downloadLink: downloadLink, overlayRect: overlayRect, overlayEditor: overlayEditor, anchor: anchor, register: register,
-    FORMATS: FORMATS, fitRect: fitRect, formatControls: formatControls,
+    FORMATS: FORMATS, fitRect: fitRect, formatControls: formatControls, makeZip: makeZip, zipButton: zipButton, stamp: stamp,
     current: function () { return current; },
   };
   document.addEventListener('DOMContentLoaded', start);
