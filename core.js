@@ -40,6 +40,7 @@
     play: 'M7 5v14l12-7z',
     pause: 'M7 5h4v14H7zM13 5h4v14h-4z',
     audio: 'M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2',
+    shield: 'M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3zM8.5 12l2.5 2.5 4.5-5',
     film: 'M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4',
   };
 
@@ -469,6 +470,7 @@
 
   // ------------------------------------------------------------ página inicial
   var DESC = {
+    'checador': 'Confere vídeo, imagem e texto contra as regras do Meta, TikTok e Kwai antes de subir.',
     'limpar-video': 'Remove localização, aparelho e datas do vídeo sem perder qualidade.',
     'sobrepor-video': 'Coloque uma imagem por cima do vídeo, em feed ou story.',
     'palco-filtro': 'Tela verde, preta ou de qualquer cor por cima do vídeo.',
