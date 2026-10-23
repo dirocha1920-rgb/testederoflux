@@ -17,6 +17,15 @@
     mount: function (body, ctx) {
       var state = { platforms: { meta: 'vertical', tiktok: 'infeed', kwai: 'infeed' }, sector: 'geral' };
       var jobs = [], checked = {};
+      var cfg = window.DF_CONFIG || {};
+      var aiServer = String(cfg.servidorIA || cfg.baixarVideoServidor || '').trim().replace(/\/+$/, '');
+      var ai = { config: null, ready: false, waking: null, code: '' };
+      try { ai.code = localStorage.getItem('ck-ia-senha') || ''; } catch (e) { /* sem armazenamento */ }
+      var aiCode = h('input', { class: 'bv-input ck-input', id: 'ck-ia-senha', type: 'password', autocomplete: 'off', value: ai.code });
+      aiCode.addEventListener('input', function () { ai.code = aiCode.value.trim(); try { localStorage.setItem('ck-ia-senha', ai.code); } catch (e) { /* ok */ } });
+      var aiBox = h('div', { class: 'ck-ai-box', hidden: true },
+        h('label', { class: 'palco-group', for: 'ck-ia-senha' }, h('span', { class: 'palco-label', text: 'Senha da análise com IA' }), aiCode,
+          h('small', { class: 'palco-note', text: 'Quem administra o site define essa senha no servidor. Fica salva neste navegador.' })));
       var notice = DF.noticeBox();
 
       // ---------------------------------------------- plataformas
@@ -61,7 +70,7 @@
           h('div', { class: 'ck-platforms' }, platformCards),
           h('label', { class: 'palco-group ck-sector', for: 'ck-setor' }, h('span', { class: 'palco-label', text: 'Tipo de produto' }), sector)),
         h('section', { class: 'ck-block' },
-          h('div', { class: 'panel-kicker', text: '02 / criativos' }), drop.el),
+          h('div', { class: 'panel-kicker', text: '02 / criativos' }), drop.el, aiBox),
         h('section', { class: 'ck-block' },
           h('div', { class: 'panel-kicker', text: '03 / texto do anúncio (opcional)' }),
           h('div', { class: 'ck-fields' }, fPrimary.el, h('div', { class: 'ck-fields-col' }, fHeadline.el, fDesc.el, fName.el)))));
@@ -267,9 +276,14 @@
               if (fixKinds.length > 1) actions.appendChild(h('button', { type: 'button', class: 'button button-primary', disabled: job.fixing, onclick: function () { applyFix(job, fixKinds); } }, 'Corrigir tudo'));
               if (job.fixing) actions.appendChild(h('span', { class: 'palco-note', text: 'Corrigindo…' }));
             }
+            if (aiServer) {
+              var aiBtnLabel = job.ai && job.ai.state === 'done' ? 'Analisar de novo com IA' : 'Analisar conteúdo com IA';
+              actions.appendChild(h('button', { type: 'button', class: 'button button-secondary ck-ai-btn', disabled: !!(job.ai && job.ai.state === 'running') || (ai.config && !ai.config.enabled), onclick: function () { runAI(job); } }, DF.svg('sparkle'), ' ' + aiBtnLabel));
+            }
             var manual = job.probe.kind === 'image' ? '' : needsManual(res);
             if (manual) actions.appendChild(h('p', { class: 'palco-note ck-manual-note', text: manual }));
             if (actions.childNodes.length) card.appendChild(actions);
+            if (job.ai) card.appendChild(aiPanel(job));
           }
           list.appendChild(card);
         });
@@ -313,6 +327,96 @@
           h('p', { class: 'palco-note', text: 'As plataformas mudam as regras com frequência e a revisão final é sempre delas. O Kwai não publica as especificações num endereço público estável; os números usados são os divulgados pelo próprio Kwai para anunciantes (inclusive o mínimo de 64 kbps de áudio, o mesmo do erro do Gerenciador).' })));
       }
 
+      // ---------------------------------------------- análise com IA
+      function timeoutFetch(url, options, ms) {
+        var c = new AbortController(), t = setTimeout(function () { c.abort(); }, ms);
+        return fetch(url, Object.assign({ signal: c.signal }, options || {})).finally(function () { clearTimeout(t); });
+      }
+      function loadAIConfig() {
+        if (!aiServer) return Promise.resolve(null);
+        return timeoutFetch(aiServer + '/api/review/config', { cache: 'no-store' }, 100000).then(function (r) { return r.ok ? r.json() : null; }).then(function (c) {
+          ai.config = c; ai.ready = !!c;
+          aiBox.hidden = !(c && c.enabled && c.requires_code);
+          return c;
+        }).catch(function () { return null; });
+      }
+      function specsText(p) {
+        var parts = [];
+        if (p.width) parts.push(p.width + 'x' + p.height);
+        if (p.duration) parts.push(Math.round(p.duration) + 's');
+        if (p.videoCodec) parts.push(p.videoCodec);
+        if (p.kind === 'video') parts.push(p.hasAudio ? 'áudio ' + (p.audioCodec || '') + ' ' + Math.round((p.audioBitrate || 0) / 1000) + 'kbps' : 'sem áudio');
+        return parts.join(', ');
+      }
+      async function runAI(job) {
+        job.ai = { state: 'running', phase: 'Ligando o servidor… (no plano grátis pode levar até 1 minuto)' };
+        render();
+        try {
+          var c = ai.config || await loadAIConfig();
+          if (!c) throw new Error('Não consegui falar com o servidor da IA. Tente de novo em instantes.');
+          if (!c.enabled) throw new Error('A análise com IA ainda não foi ligada no servidor (falta a chave do Gemini). Veja o guia.');
+          if (c.requires_code && !ai.code) { aiBox.hidden = false; throw new Error('Digite a senha da análise com IA (campo acima dos criativos).'); }
+          if (job.file.size > c.max_mb * 1048576) throw new Error('Arquivo grande demais para a IA (máximo ' + c.max_mb + ' MB).');
+          job.ai.phase = 'Enviando o criativo e a IA está assistindo… (costuma levar de 20 a 90 segundos)';
+          render();
+          var form = new FormData();
+          form.append('file', job.file, job.file.name);
+          form.append('platforms', JSON.stringify(state.platforms));
+          form.append('texts', JSON.stringify(textFields()));
+          form.append('sector', (R.SECTORS.find(function (x) { return x[0] === state.sector; }) || ['', ''])[1]);
+          form.append('specs', specsText(job.probe));
+          form.append('code', ai.code || '');
+          var res = await timeoutFetch(aiServer + '/api/review', { method: 'POST', body: form }, 420000);
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok) throw new Error(data.detail || 'A análise falhou (código ' + res.status + ').');
+          if (ai.config && typeof data.restantes === 'number') ai.config.remaining = data.restantes;
+          job.ai = { state: 'done', report: data, when: new Date(), platforms: Object.assign({}, state.platforms) };
+        } catch (e) {
+          job.ai = { state: 'error', error: e.name === 'AbortError' ? 'A análise demorou demais. Tente de novo.' : (e.name === 'TypeError' ? 'Sem conexão com o servidor da IA.' : e.message) };
+        }
+        render();
+      }
+      var AI_VERDICT = { reprovado: ['reprovado', 'Vai ser reprovado'], risco: ['atencao', 'Risco de reprovação'], aprovado: ['ok', 'Aprovado'] };
+      var AI_LEVEL = { erro: 'erro', aviso: 'aviso', dica: 'info' };
+      function aiPanel(job) {
+        var a = job.ai;
+        var panel = h('section', { class: 'ck-ai' }, h('div', { class: 'ck-ai-head' }, DF.svg('sparkle'), h('strong', { text: 'Análise de conteúdo com IA' }), h('span', { class: 'ck-ai-beta mono', text: 'beta' })));
+        if (a.state === 'running') {
+          panel.appendChild(h('div', { class: 'bv-loading' }, h('span', { class: 'bv-spinner' }), h('span', { text: a.phase })));
+          return panel;
+        }
+        if (a.state === 'error') { panel.appendChild(h('p', { class: 'job-error', text: a.error })); return panel; }
+        var r = a.report;
+        if (r.resumo) panel.appendChild(h('p', { class: 'ck-ai-summary', text: r.resumo }));
+        panel.appendChild(h('div', { class: 'ck-grid' }, (r.plataformas || []).map(function (pl) {
+          var v = AI_VERDICT[pl.veredito] || AI_VERDICT.risco;
+          var items = (pl.problemas || []).slice().sort(function (x, y) { return LEVEL[AI_LEVEL[y.gravidade]] - LEVEL[AI_LEVEL[x.gravidade]]; });
+          return h('div', { class: 'ck-col' },
+            h('div', { class: 'ck-col-head' }, h('strong', { text: (R.PLATFORMS[pl.plataforma] || { name: pl.plataforma }).name }),
+              h('span', { class: 'ck-verdict ck-verdict-' + v[0] }, h('span', { class: 'ck-verdict-dot' }), v[1])),
+            items.length ? h('ul', { class: 'ck-issues' }, items.map(function (it) {
+              var lvl = AI_LEVEL[it.gravidade] || 'aviso';
+              return h('li', { class: 'ck-issue ck-' + lvl },
+                h('span', { class: 'ck-tag mono', text: LEVEL_LABEL[lvl] }),
+                h('div', { class: 'ck-issue-body' },
+                  h('p', null, it.momento ? h('span', { class: 'ck-time mono', text: it.momento }) : null, it.onde ? h('span', { class: 'ck-where mono', text: it.onde }) : null, it.o_que),
+                  it.regra ? h('p', { class: 'ck-tip', text: 'Regra: ' + it.regra }) : null,
+                  it.como_corrigir ? h('p', { class: 'ck-tip', text: '→ ' + it.como_corrigir }) : null));
+            })) : h('p', { class: 'palco-note', text: 'A IA não encontrou problemas de conteúdo.' }));
+        })));
+        if (r.sugestao_legenda) {
+          var copy = h('button', { type: 'button', class: 'text-button', text: 'copiar' });
+          copy.addEventListener('click', function () { if (navigator.clipboard) navigator.clipboard.writeText(r.sugestao_legenda).then(function () { copy.textContent = 'copiado'; }, function () {}); });
+          panel.appendChild(h('div', { class: 'ck-ai-caption' }, h('span', { class: 'palco-label', text: 'Sugestão de texto' }), h('p', { text: r.sugestao_legenda }), copy));
+        }
+        var extra = [];
+        if (r.transcricao) extra.push(h('div', null, h('span', { class: 'palco-label', text: 'O que é falado' }), h('p', { text: r.transcricao })));
+        if (r.texto_na_tela && r.texto_na_tela.length) extra.push(h('div', null, h('span', { class: 'palco-label', text: 'Texto na tela' }), h('ul', null, r.texto_na_tela.map(function (t) { return h('li', { text: t }); }))));
+        if (extra.length) panel.appendChild(h('details', { class: 'ck-ai-details' }, h('summary', { text: 'Ver o que a IA ouviu e leu' }), extra));
+        panel.appendChild(h('p', { class: 'palco-note', text: 'Feita às ' + a.when.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' com o texto e as plataformas daquele momento' + (r.modelo ? ' · modelo ' + r.modelo : '') + (typeof r.restantes === 'number' ? ' · restam ' + r.restantes + ' análises hoje' : '') + '. A IA ajuda, mas pode errar: a decisão final é da plataforma.' }));
+        return panel;
+      }
+
       function needsManual(res) {
         var notes = [];
         Object.keys(res).forEach(function (pl) {
@@ -331,6 +435,7 @@
       }
 
       render();
+      if (aiServer) loadAIConfig().then(function () { render(); });
     },
   });
 })();

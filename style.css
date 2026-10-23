@@ -687,3 +687,20 @@ h2 { margin-top: .48rem; color: var(--white); font-size: 1.2rem; letter-spacing:
 .ck-sources ul { display: grid; gap: .3rem; margin: .8rem 0; padding-left: 1.1rem; }
 .ck-sources a { color: var(--text); }
 @media (max-width: 860px) { .ck-fields { grid-template-columns: 1fr; } }
+
+/* Checador: análise com IA */
+.ck-ai-box { max-width: 420px; }
+.ck-ai { display: grid; gap: .8rem; padding: 1rem; border: 1px solid rgba(245,245,245,.35); background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); }
+.ck-ai-head { display: flex; align-items: center; gap: .5rem; color: var(--white); }
+.ck-ai-beta { padding: .1rem .35rem; border: 1px solid var(--line-strong); color: var(--muted); font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; }
+.ck-ai-summary { margin: 0; color: var(--text); font-size: .8rem; line-height: 1.55; }
+.ck-time, .ck-where { display: inline-block; margin-right: .4rem; padding: .05rem .3rem; border: 1px solid var(--line-strong); color: var(--white); font-size: .6rem; }
+.ck-where { color: var(--muted); }
+.ck-ai-caption { display: grid; gap: .35rem; padding: .8rem; border: 1px dashed var(--line-strong); }
+.ck-ai-caption p { margin: 0; color: var(--white); font-size: .8rem; }
+.ck-ai-caption .text-button { justify-self: start; }
+.ck-ai-details { font-size: .74rem; color: var(--text); }
+.ck-ai-details summary { cursor: pointer; color: var(--white); }
+.ck-ai-details > div { display: grid; gap: .3rem; margin-top: .7rem; }
+.ck-ai-details p, .ck-ai-details ul { margin: 0; line-height: 1.5; }
+.ck-ai-btn .icon { width: .95rem; height: .95rem; }
